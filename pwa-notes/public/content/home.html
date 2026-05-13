@@ -1,0 +1,16 @@
+<section>
+  <h2>Список заметок</h2>
+
+  <form id="note-form" class="row">
+    <input class="col-9" type="text" id="note-input" placeholder="Введите заметку" required />
+    <button class="col-3 button primary" type="submit">Добавить</button>
+  </form>
+
+  <form id="reminder-form" class="row" style="margin-top: 1rem">
+    <input class="col-5" type="text" id="reminder-text" placeholder="Текст напоминания" required />
+    <input class="col-4" type="datetime-local" id="reminder-time" required />
+    <button class="col-3 button success" type="submit">Добавить с напоминанием</button>
+  </form>
+
+  <ul id="notes-list" style="list-style: none; padding-left: 0; margin-top: 1rem"></ul>
+</section>

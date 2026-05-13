@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="PWA приложение заметок с офлайн-режимом и напоминаниями" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="icon" href="/icons/icon-192.png" type="image/png" />
+    <title>Заметки PWA</title>
+    <link rel="stylesheet" href="https://unpkg.com/chota@latest" />
+    <style>
+      body {
+        background: #f3f4f6;
+      }
+
+      .app-shell {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 24px 16px;
+      }
+
+      .topbar,
+      .panel,
+      .toast {
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .topbar {
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+
+      .nav {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .nav button.active {
+        background: #2563eb;
+        color: #ffffff;
+      }
+
+      .panel {
+        padding: 16px;
+      }
+
+      .note-item {
+        margin-bottom: 8px;
+        padding: 10px;
+        border-radius: 8px;
+        background: #f9fafb;
+      }
+
+      .note-item small {
+        display: block;
+        margin-top: 4px;
+        color: #2563eb;
+      }
+
+      .toast {
+        position: fixed;
+        right: 16px;
+        top: 16px;
+        padding: 12px 14px;
+        color: #ffffff;
+        background: #2563eb;
+        z-index: 10;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <h1>Заметки PWA</h1>
+        <p>Офлайн-заметки, App Shell, WebSocket, push-уведомления и напоминания.</p>
+        <nav class="nav">
+          <button id="home-btn" class="button primary active" type="button">Главная</button>
+          <button id="about-btn" class="button" type="button">О приложении</button>
+          <button id="enable-push" class="button success" type="button">Включить уведомления</button>
+          <button id="disable-push" class="button error" type="button" style="display: none">
+            Отключить уведомления
+          </button>
+        </nav>
+      </header>
+
+      <main id="content" class="panel"></main>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

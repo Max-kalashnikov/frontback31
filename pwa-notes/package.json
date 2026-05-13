@@ -1,0 +1,14 @@
+{
+  "name": "pwa-notes-practices-13-18",
+  "version": "1.0.0",
+  "description": "PWA notes app for frontend/backend practices 13-18",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "socket.io": "^4.8.1",
+    "web-push": "^3.6.7"
+  }
+}
