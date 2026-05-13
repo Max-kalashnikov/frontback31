@@ -20,11 +20,18 @@ const authInitial = {
   role: "user",
 };
 
+const noteFormInitial = {
+  text: "",
+  reminder: "",
+};
+
 const roleLabels = {
   user: "Пользователь",
   seller: "Продавец",
   admin: "Администратор",
 };
+
+const ADMIN_NOTES_KEY = "frontback31AdminNotes";
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -36,6 +43,8 @@ function App() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [productForm, setProductForm] = useState(productFormInitial);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [notes, setNotes] = useState([]);
+  const [noteForm, setNoteForm] = useState(noteFormInitial);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -56,6 +65,30 @@ function App() {
     // restoreSession intentionally runs only once on app start.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (currentUser?.role === "admin") {
+      loadNotes();
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser?.role !== "admin") return undefined;
+
+    const timers = notes
+      .filter((note) => note.reminder && !note.done)
+      .map((note) => {
+        const delay = Number(note.reminder) - Date.now();
+        if (delay <= 0) return null;
+
+        return window.setTimeout(() => {
+          showReminder(note);
+        }, delay);
+      })
+      .filter(Boolean);
+
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [notes, currentUser]);
 
   async function restoreSession() {
     try {
@@ -129,7 +162,99 @@ function App() {
     setCurrentUser(null);
     setProducts([]);
     setUsers([]);
+    setNotes([]);
     setSelectedProduct(null);
+  }
+
+  function loadNotes() {
+    const savedNotes = JSON.parse(localStorage.getItem(ADMIN_NOTES_KEY) || "[]");
+    setNotes(savedNotes);
+  }
+
+  function saveNotes(nextNotes) {
+    localStorage.setItem(ADMIN_NOTES_KEY, JSON.stringify(nextNotes));
+    setNotes(nextNotes);
+  }
+
+  function showReminder(note) {
+    const text = `Напоминание: ${note.text}`;
+
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("Админка магазина", {
+        body: text,
+      });
+    } else {
+      setMessage(text);
+    }
+  }
+
+  async function requestNotifications() {
+    if (!("Notification" in window)) {
+      setMessage("Браузер не поддерживает уведомления");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    setMessage(
+      permission === "granted"
+        ? "Уведомления включены"
+        : "Уведомления не разрешены, напоминания будут показываться сообщением на странице"
+    );
+  }
+
+  function handleNoteChange(e) {
+    const { name, value } = e.target;
+    setNoteForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function handleNoteSubmit(e) {
+    e.preventDefault();
+    const text = noteForm.text.trim();
+
+    if (!text) {
+      setMessage("Введите текст заметки");
+      return;
+    }
+
+    const reminderTimestamp = noteForm.reminder ? new Date(noteForm.reminder).getTime() : null;
+
+    if (reminderTimestamp && reminderTimestamp <= Date.now()) {
+      setMessage("Дата напоминания должна быть в будущем");
+      return;
+    }
+
+    const nextNotes = [
+      ...notes,
+      {
+        id: Date.now(),
+        text,
+        reminder: reminderTimestamp,
+        done: false,
+        createdAt: Date.now(),
+      },
+    ];
+
+    saveNotes(nextNotes);
+    setNoteForm(noteFormInitial);
+    setMessage("");
+  }
+
+  function toggleNote(id) {
+    saveNotes(notes.map((note) => (note.id === id ? { ...note, done: !note.done } : note)));
+  }
+
+  function snoozeNote(id) {
+    const fiveMinutes = 5 * 60 * 1000;
+    saveNotes(
+      notes.map((note) =>
+        note.id === id ? { ...note, reminder: Date.now() + fiveMinutes, done: false } : note
+      )
+    );
+    setMessage("Напоминание отложено на 5 минут");
+  }
+
+  function deleteNote(id) {
+    saveNotes(notes.filter((note) => note.id !== id));
   }
 
   function openCreateProduct() {
@@ -442,6 +567,65 @@ function App() {
                     </button>
                   </div>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {canManageUsers && (
+            <section className="admin-notes">
+              <div className="toolbar">
+                <h2 className="title">Заметки и напоминания</h2>
+                <button className="btn" onClick={requestNotifications}>
+                  Включить уведомления
+                </button>
+              </div>
+
+              <form className="note-form" onSubmit={handleNoteSubmit}>
+                <input
+                  className="input"
+                  name="text"
+                  placeholder="Заметка для админки"
+                  value={noteForm.text}
+                  onChange={handleNoteChange}
+                />
+                <input
+                  className="input"
+                  name="reminder"
+                  type="datetime-local"
+                  value={noteForm.reminder}
+                  onChange={handleNoteChange}
+                />
+                <button className="btn btn--primary" type="submit">
+                  Добавить
+                </button>
+              </form>
+
+              <div className="notes-list">
+                {notes.length === 0 ? (
+                  <div className="empty">Заметок пока нет</div>
+                ) : (
+                  notes.map((note) => (
+                    <div className={note.done ? "note-row note-row--done" : "note-row"} key={note.id}>
+                      <div>
+                        <strong>{note.text}</strong>
+                        {note.reminder && (
+                          <span>Напоминание: {new Date(note.reminder).toLocaleString()}</span>
+                        )}
+                      </div>
+                      <button className="btn" onClick={() => toggleNote(note.id)}>
+                        {note.done ? "Вернуть" : "Готово"}
+                      </button>
+                      {note.reminder && (
+                        <button className="btn" onClick={() => snoozeNote(note.id)}>
+                          Отложить на 5 минут
+                        </button>
+                      )}
+                      <button className="btn btn--danger" onClick={() => deleteNote(note.id)}>
+                        Удалить
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </section>
           )}

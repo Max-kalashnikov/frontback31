@@ -212,7 +212,8 @@ body {
 
 .empty,
 .details,
-.users-panel {
+.users-panel,
+.admin-notes {
   @include card();
   padding: 16px;
 }
@@ -312,7 +313,8 @@ body {
   }
 }
 
-.users-panel {
+.users-panel,
+.admin-notes {
   margin-top: 22px;
 }
 
@@ -338,6 +340,47 @@ body {
   span {
     color: $muted;
     font-size: 13px;
+  }
+}
+
+.note-form {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 220px auto;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto auto auto;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+
+  strong,
+  span {
+    display: block;
+  }
+
+  span {
+    color: $muted;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  &--done {
+    opacity: 0.65;
+
+    strong {
+      text-decoration: line-through;
+    }
   }
 }
 
@@ -381,7 +424,9 @@ body {
 
 @media (max-width: 760px) {
   .form__row,
-  .user-row {
+  .user-row,
+  .note-form,
+  .note-row {
     grid-template-columns: 1fr;
   }
 
