@@ -37,6 +37,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authMode, setAuthMode] = useState("login");
   const [authForm, setAuthForm] = useState(authInitial);
+  const [activeAdminTab, setActiveAdminTab] = useState("notes");
   const [products, setProducts] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -51,6 +52,9 @@ function App() {
   const canEditProducts = currentUser?.role === "seller" || currentUser?.role === "admin";
   const canDeleteProducts = currentUser?.role === "admin";
   const canManageUsers = currentUser?.role === "admin";
+  const activeProductsCount = products.filter((product) => Number(product.stock) > 0).length;
+  const pendingNotesCount = notes.filter((note) => !note.done).length;
+  const plannedNotesCount = notes.filter((note) => note.reminder && !note.done).length;
 
   const userTitle = useMemo(() => {
     if (!currentUser) return "";
@@ -374,7 +378,10 @@ function App() {
     return (
       <div className="auth-page">
         <form className="auth-card" onSubmit={handleAuthSubmit}>
-          <div className="brand">Peripherals Shop</div>
+          <div>
+            <div className="brand">Peripherals Shop</div>
+            <p className="auth-card__lead">Панель магазина компьютерной периферии</p>
+          </div>
           <h1>{authMode === "login" ? "Вход" : "Регистрация"}</h1>
 
           {message && <div className="notice">{message}</div>}
@@ -469,15 +476,41 @@ function App() {
         <div className="container">
           {message && <div className="notice">{message}</div>}
 
+          <section className="summary">
+            <div className="summary__item">
+              <span>Товаров</span>
+              <strong>{products.length}</strong>
+            </div>
+            <div className="summary__item">
+              <span>В наличии</span>
+              <strong>{activeProductsCount}</strong>
+            </div>
+            {canManageUsers && (
+              <>
+                <div className="summary__item">
+                  <span>Пользователей</span>
+                  <strong>{users.length}</strong>
+                </div>
+                <div className="summary__item">
+                  <span>Напоминаний</span>
+                  <strong>{plannedNotesCount}</strong>
+                </div>
+              </>
+            )}
+          </section>
+
           <div className="toolbar">
-            <h1 className="title">Каталог компьютерной периферии</h1>
+            <div>
+              <h1 className="title">Каталог</h1>
+              <p className="section-note">Товары, остатки и быстрые действия по магазину.</p>
+            </div>
             {canEditProducts && (
               <button className="btn btn--primary" onClick={openCreateProduct}>
                 + Новый товар
               </button>
             )}
-          </div>
-
+                        </div>
+                      )))
           {selectedProduct && (
             <section className="details">
               <button className="link-button" type="button" onClick={() => setSelectedProduct(null)}>
@@ -531,102 +564,129 @@ function App() {
           )}
 
           {canManageUsers && (
-            <section className="users-panel">
-              <div className="toolbar">
-                <h2 className="title">Пользователи</h2>
-                <button className="btn" onClick={loadUsers}>
-                  Обновить
-                </button>
+            <section className="admin-panel">
+              <div className="admin-panel__header">
+                <div>
+                  <h2 className="title">Админка</h2>
+                  <p className="section-note">Пользователи, рабочие заметки и напоминания.</p>
+                </div>
+                <div className="tabs">
+                  <button
+                    className={activeAdminTab === "notes" ? "tab tab--active" : "tab"}
+                    type="button"
+                    onClick={() => setActiveAdminTab("notes")}
+                  >
+                    Заметки <span>{pendingNotesCount}</span>
+                  </button>
+                  <button
+                    className={activeAdminTab === "users" ? "tab tab--active" : "tab"}
+                    type="button"
+                    onClick={() => setActiveAdminTab("users")}
+                  >
+                    Пользователи <span>{users.length}</span>
+                  </button>
+                </div>
               </div>
-              <div className="users-list">
-                {users.map((user) => (
-                  <div className="user-row" key={user.id}>
-                    <div>
-                      <strong>{user.first_name} {user.last_name}</strong>
-                      <span>{user.email}</span>
-                    </div>
-                    <select
-                      className="input"
-                      value={user.role}
-                      onChange={(e) => handleUserChange(user.id, "role", e.target.value)}
-                    >
-                      <option value="user">Пользователь</option>
-                      <option value="seller">Продавец</option>
-                      <option value="admin">Администратор</option>
-                    </select>
-                    <select
-                      className="input"
-                      value={String(user.blocked)}
-                      onChange={(e) => handleUserChange(user.id, "blocked", e.target.value)}
-                    >
-                      <option value="false">Активен</option>
-                      <option value="true">Заблокирован</option>
-                    </select>
-                    <button className="btn btn--danger" onClick={() => blockUser(user.id)}>
-                      Блокировать
+
+              {activeAdminTab === "users" && (
+                <div className="panel-surface">
+                  <div className="panel-surface__top">
+                    <h3>Пользователи</h3>
+                    <button className="btn" onClick={loadUsers}>
+                      Обновить
                     </button>
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {canManageUsers && (
-            <section className="admin-notes">
-              <div className="toolbar">
-                <h2 className="title">Заметки и напоминания</h2>
-                <button className="btn" onClick={requestNotifications}>
-                  Включить уведомления
-                </button>
-              </div>
-
-              <form className="note-form" onSubmit={handleNoteSubmit}>
-                <input
-                  className="input"
-                  name="text"
-                  placeholder="Заметка для админки"
-                  value={noteForm.text}
-                  onChange={handleNoteChange}
-                />
-                <input
-                  className="input"
-                  name="reminder"
-                  type="datetime-local"
-                  value={noteForm.reminder}
-                  onChange={handleNoteChange}
-                />
-                <button className="btn btn--primary" type="submit">
-                  Добавить
-                </button>
-              </form>
-
-              <div className="notes-list">
-                {notes.length === 0 ? (
-                  <div className="empty">Заметок пока нет</div>
-                ) : (
-                  notes.map((note) => (
-                    <div className={note.done ? "note-row note-row--done" : "note-row"} key={note.id}>
-                      <div>
-                        <strong>{note.text}</strong>
-                        {note.reminder && (
-                          <span>Напоминание: {new Date(note.reminder).toLocaleString()}</span>
-                        )}
-                      </div>
-                      <button className="btn" onClick={() => toggleNote(note.id)}>
-                        {note.done ? "Вернуть" : "Готово"}
-                      </button>
-                      {note.reminder && (
-                        <button className="btn" onClick={() => snoozeNote(note.id)}>
-                          Отложить на 5 минут
+                  <div className="users-list">
+                    {users.map((user) => (
+                      <div className="user-row" key={user.id}>
+                        <div>
+                          <strong>{user.first_name} {user.last_name}</strong>
+                          <span>{user.email}</span>
+                        </div>
+                        <select
+                          className="input"
+                          value={user.role}
+                          onChange={(e) => handleUserChange(user.id, "role", e.target.value)}
+                        >
+                          <option value="user">Пользователь</option>
+                          <option value="seller">Продавец</option>
+                          <option value="admin">Администратор</option>
+                        </select>
+                        <select
+                          className="input"
+                          value={String(user.blocked)}
+                          onChange={(e) => handleUserChange(user.id, "blocked", e.target.value)}
+                        >
+                          <option value="false">Активен</option>
+                          <option value="true">Заблокирован</option>
+                        </select>
+                        <button className="btn btn--danger" onClick={() => blockUser(user.id)}>
+                          Блокировать
                         </button>
-                      )}
-                      <button className="btn btn--danger" onClick={() => deleteNote(note.id)}>
-                        Удалить
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeAdminTab === "notes" && (
+                <div className="panel-surface">
+                  <div className="panel-surface__top">
+                    <h3>Заметки и напоминания</h3>
+                    <button className="btn" onClick={requestNotifications}>
+                      Включить уведомления
+                    </button>
+                  </div>
+
+                  <form className="note-form" onSubmit={handleNoteSubmit}>
+                    <input
+                      className="input"
+                      name="text"
+                      placeholder="Что нужно не забыть?"
+                      value={noteForm.text}
+                      onChange={handleNoteChange}
+                    />
+                    <input
+                      className="input"
+                      name="reminder"
+                      type="datetime-local"
+                      value={noteForm.reminder}
+                      onChange={handleNoteChange}
+                    />
+                    <button className="btn btn--primary" type="submit">
+                      Добавить
+                    </button>
+                  </form>
+
+                  <div className="notes-list">
+                    {notes.length === 0 ? (
+                      <div className="empty">Заметок пока нет</div>
+                    ) : (
+                      notes.map((note) => (
+                        <div className={note.done ? "note-row note-row--done" : "note-row"} key={note.id}>
+                          <div>
+                            <strong>{note.text}</strong>
+                            {note.reminder && (
+                              <span>Напоминание: {new Date(note.reminder).toLocaleString()}</span>
+                            )}
+                          </div>
+                          <button className="btn" onClick={() => toggleNote(note.id)}>
+                            {note.done ? "Вернуть" : "Готово"}
+                          </button>
+                          {note.reminder && (
+                            <button className="btn" onClick={() => snoozeNote(note.id)}>
+                              Отложить
+                            </button>
+                          )}
+                          <button className="btn btn--danger" onClick={() => deleteNote(note.id)}>
+                            Удалить
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </section>
           )}
         </div>
