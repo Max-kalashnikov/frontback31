@@ -20,9 +20,34 @@ const authInitial = {
   role: "user",
 };
 
-const noteFormInitial = {
-  text: "",
-  reminder: "",
+function getDateInputValue(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function createNoteFormInitial() {
+  return {
+    text: "",
+    reminderDate: getDateInputValue(),
+    reminderTime: "",
+  };
+}
+
+const snoozeFormInitial = {
+  amount: "5",
+  unit: "minutes",
+};
+
+const snoozeUnitLabels = {
+  minutes: "минут",
+  hours: "часов",
+};
+
+const snoozeUnitMs = {
+  minutes: 60 * 1000,
+  hours: 60 * 60 * 1000,
 };
 
 const roleLabels = {
@@ -45,7 +70,10 @@ function App() {
   const [productForm, setProductForm] = useState(productFormInitial);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [notes, setNotes] = useState([]);
-  const [noteForm, setNoteForm] = useState(noteFormInitial);
+  const [noteForm, setNoteForm] = useState(createNoteFormInitial);
+  const [notificationStatus, setNotificationStatus] = useState("");
+  const [snoozeTargetId, setSnoozeTargetId] = useState(null);
+  const [snoozeForm, setSnoozeForm] = useState(snoozeFormInitial);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -65,6 +93,10 @@ function App() {
     const { accessToken } = getTokens();
     if (accessToken) {
       restoreSession();
+    }
+
+    if ("Notification" in window) {
+      setNotificationStatus(Notification.permission);
     }
     // restoreSession intentionally runs only once on app start.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,16 +226,33 @@ function App() {
 
   async function requestNotifications() {
     if (!("Notification" in window)) {
+      setNotificationStatus("unsupported");
       setMessage("Браузер не поддерживает уведомления");
       return;
     }
 
-    const permission = await Notification.requestPermission();
-    setMessage(
-      permission === "granted"
-        ? "Уведомления включены"
-        : "Уведомления не разрешены, напоминания будут показываться сообщением на странице"
-    );
+    if (Notification.permission === "denied") {
+      setNotificationStatus("denied");
+      setMessage("Уведомления запрещены в браузере. Разрешите их в настройках сайта для localhost.");
+      return;
+    }
+
+    try {
+      const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+      setNotificationStatus(permission);
+
+      if (permission === "granted") {
+        new Notification("Уведомления включены", {
+          body: "Напоминания из админки теперь будут всплывать в браузере.",
+        });
+        setMessage("Уведомления включены. Тестовое уведомление отправлено.");
+        return;
+      }
+
+      setMessage("Уведомления пока не разрешены, напоминания будут показываться сообщением на странице");
+    } catch (err) {
+      setMessage("Не получилось запросить уведомления. Проверьте разрешения сайта в браузере.");
+    }
   }
 
   function handleNoteChange(e) {
@@ -220,10 +269,12 @@ function App() {
       return;
     }
 
-    const reminderTimestamp = noteForm.reminder ? new Date(noteForm.reminder).getTime() : null;
+    const reminderTimestamp = noteForm.reminderTime
+      ? new Date(`${noteForm.reminderDate || getDateInputValue()}T${noteForm.reminderTime}`).getTime()
+      : null;
 
-    if (reminderTimestamp && reminderTimestamp <= Date.now()) {
-      setMessage("Дата напоминания должна быть в будущем");
+    if (reminderTimestamp && (Number.isNaN(reminderTimestamp) || reminderTimestamp <= Date.now())) {
+      setMessage("Дата и время напоминания должны быть в будущем");
       return;
     }
 
@@ -239,7 +290,7 @@ function App() {
     ];
 
     saveNotes(nextNotes);
-    setNoteForm(noteFormInitial);
+    setNoteForm(createNoteFormInitial());
     setMessage("");
   }
 
@@ -247,14 +298,39 @@ function App() {
     saveNotes(notes.map((note) => (note.id === id ? { ...note, done: !note.done } : note)));
   }
 
-  function snoozeNote(id) {
-    const fiveMinutes = 5 * 60 * 1000;
+  function openSnoozeNote(id) {
+    setSnoozeTargetId(id);
+    setSnoozeForm(snoozeFormInitial);
+  }
+
+  function closeSnoozeModal() {
+    setSnoozeTargetId(null);
+    setSnoozeForm(snoozeFormInitial);
+  }
+
+  function handleSnoozeChange(e) {
+    const { name, value } = e.target;
+    setSnoozeForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function snoozeNote(e) {
+    e.preventDefault();
+
+    const amount = Number(snoozeForm.amount);
+    const unitMs = snoozeUnitMs[snoozeForm.unit] || snoozeUnitMs.minutes;
+
+    if (!snoozeTargetId || !Number.isFinite(amount) || amount <= 0) {
+      setMessage("Укажите, на сколько отложить напоминание");
+      return;
+    }
+
     saveNotes(
       notes.map((note) =>
-        note.id === id ? { ...note, reminder: Date.now() + fiveMinutes, done: false } : note
+        note.id === snoozeTargetId ? { ...note, reminder: Date.now() + amount * unitMs, done: false } : note
       )
     );
-    setMessage("Напоминание отложено на 5 минут");
+    setMessage(`Напоминание отложено на ${amount} ${snoozeUnitLabels[snoozeForm.unit] || "минут"}`);
+    closeSnoozeModal();
   }
 
   function deleteNote(id) {
@@ -633,9 +709,22 @@ function App() {
                 <div className="panel-surface">
                   <div className="panel-surface__top">
                     <h3>Заметки и напоминания</h3>
-                    <button className="btn" onClick={requestNotifications}>
-                      Включить уведомления
-                    </button>
+                    <div className="notification-actions">
+                      <button className="btn" type="button" onClick={requestNotifications}>
+                        Включить уведомления
+                      </button>
+                      {notificationStatus && (
+                        <span className="notification-status">
+                          {notificationStatus === "granted"
+                            ? "Разрешены"
+                            : notificationStatus === "denied"
+                              ? "Запрещены"
+                              : notificationStatus === "unsupported"
+                                ? "Не поддерживаются"
+                                : "Не выбраны"}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <form className="note-form" onSubmit={handleNoteSubmit}>
@@ -648,9 +737,16 @@ function App() {
                     />
                     <input
                       className="input"
-                      name="reminder"
-                      type="datetime-local"
-                      value={noteForm.reminder}
+                      name="reminderDate"
+                      type="date"
+                      value={noteForm.reminderDate}
+                      onChange={handleNoteChange}
+                    />
+                    <input
+                      className="input"
+                      name="reminderTime"
+                      type="time"
+                      value={noteForm.reminderTime}
                       onChange={handleNoteChange}
                     />
                     <button className="btn btn--primary" type="submit">
@@ -674,7 +770,7 @@ function App() {
                             {note.done ? "Вернуть" : "Готово"}
                           </button>
                           {note.reminder && (
-                            <button className="btn" onClick={() => snoozeNote(note.id)}>
+                            <button className="btn" onClick={() => openSnoozeNote(note.id)}>
                               Отложить
                             </button>
                           )}
@@ -719,6 +815,43 @@ function App() {
                 </button>
                 <button className="btn btn--primary" type="submit">
                   Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {snoozeTargetId && (
+        <div className="backdrop" onMouseDown={closeSnoozeModal}>
+          <div className="modal modal--small" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className="modal__header">
+              <div className="modal__title">Отложить напоминание</div>
+              <button type="button" className="btn" onClick={closeSnoozeModal}>
+                Закрыть
+              </button>
+            </div>
+            <form className="form" onSubmit={snoozeNote}>
+              <div className="form__row">
+                <input
+                  className="input"
+                  name="amount"
+                  type="number"
+                  min="1"
+                  value={snoozeForm.amount}
+                  onChange={handleSnoozeChange}
+                />
+                <select className="input" name="unit" value={snoozeForm.unit} onChange={handleSnoozeChange}>
+                  <option value="minutes">Минут</option>
+                  <option value="hours">Часов</option>
+                </select>
+              </div>
+              <div className="modal__footer">
+                <button type="button" className="btn" onClick={closeSnoozeModal}>
+                  Отмена
+                </button>
+                <button className="btn btn--primary" type="submit">
+                  Отложить
                 </button>
               </div>
             </form>

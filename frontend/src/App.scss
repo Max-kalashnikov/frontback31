@@ -423,11 +423,28 @@ body {
 
 .panel-surface__top {
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 
   h3 {
     margin: 0;
     font-size: 16px;
   }
+}
+
+.notification-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.notification-status {
+  color: $muted;
+  font-size: 13px;
 }
 
 .users-list,
@@ -462,7 +479,7 @@ body {
 
 .note-form {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 220px auto;
+  grid-template-columns: minmax(260px, 1fr) 160px 130px auto;
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -521,6 +538,10 @@ body {
     justify-content: flex-end;
     gap: 8px;
   }
+
+  &--small {
+    width: min(420px, 100%);
+  }
 }
 
 @media (max-width: 760px) {
@@ -529,6 +550,15 @@ body {
   .note-form,
   .note-row {
     grid-template-columns: 1fr;
+  }
+
+  .panel-surface__top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .notification-actions {
+    justify-content: flex-start;
   }
 
   .product-card__actions {
