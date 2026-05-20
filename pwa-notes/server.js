@@ -12,7 +12,7 @@ const io = new Server(server, {
   },
 });
 
-const port = Number(process.env.PORT || 3001);
+const port = Number(process.env.PORT || 3013);
 const publicDir = path.join(__dirname, "public");
 
 const vapidKeys = {
