@@ -371,32 +371,44 @@ function App() {
   async function handleProductSubmit(e) {
     e.preventDefault();
 
+    const price = Number(productForm.price);
+    const stock = Number(productForm.stock || 0);
+    const rating = Number(productForm.rating || 0);
+
     const payload = {
       ...productForm,
-      price: Number(productForm.price),
-      stock: Number(productForm.stock || 0),
-      rating: Number(productForm.rating || 0),
+      title: productForm.title.trim(),
+      category: productForm.category.trim(),
+      description: productForm.description.trim(),
+      image: productForm.image.trim(),
+      price,
+      stock,
+      rating,
     };
 
-    if (!payload.title || !payload.category || !payload.description || !Number.isFinite(payload.price)) {
+    if (!payload.title || !payload.category || !payload.description || !Number.isFinite(price) || price <= 0) {
       setMessage("Заполните название, категорию, описание и цену");
+      return;
+    }
+
+    if (!Number.isFinite(stock) || stock < 0 || !Number.isFinite(rating) || rating < 0) {
+      setMessage("Остаток и рейтинг должны быть положительными числами");
       return;
     }
 
     try {
       if (editingProduct) {
         const updated = await api.updateProduct(editingProduct.id, payload);
-        setProducts((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
         setSelectedProduct(updated);
       } else {
-        const created = await api.createProduct(payload);
-        setProducts((prev) => [...prev, created]);
+        await api.createProduct(payload);
       }
 
+      await loadProducts();
       closeProductModal();
       setMessage("");
     } catch (err) {
-      setMessage("Нет прав или не удалось сохранить товар");
+      setMessage(err.response?.data?.error || "Нет прав или не удалось сохранить товар");
     }
   }
 
@@ -414,10 +426,10 @@ function App() {
 
     try {
       await api.deleteProduct(id);
-      setProducts((prev) => prev.filter((item) => item.id !== id));
+      await loadProducts();
       if (selectedProduct?.id === id) setSelectedProduct(null);
     } catch (err) {
-      setMessage("Удалять товары может только администратор");
+      setMessage(err.response?.data?.error || "Удалять товары может только администратор");
     }
   }
 
@@ -593,12 +605,11 @@ function App() {
               <p className="section-note">Товары, остатки и быстрые действия по магазину.</p>
             </div>
             {canEditProducts && (
-              <button className="btn btn--primary" onClick={openCreateProduct}>
+              <button className="btn btn--primary" type="button" onClick={openCreateProduct}>
                 + Новый товар
               </button>
             )}
-                        </div>
-                      )))
+          </div>
           {selectedProduct && (
             <section className="details">
               <button className="link-button" type="button" onClick={() => setSelectedProduct(null)}>
@@ -814,15 +825,15 @@ function App() {
               </button>
             </div>
             <form className="form" onSubmit={handleProductSubmit}>
-              <input className="input" name="title" placeholder="Название" value={productForm.title} onChange={handleProductChange} />
-              <input className="input" name="category" placeholder="Категория" value={productForm.category} onChange={handleProductChange} />
-              <textarea className="input input--textarea" name="description" placeholder="Описание" value={productForm.description} onChange={handleProductChange} />
+              <input className="input" name="title" placeholder="Название" value={productForm.title} onChange={handleProductChange} required />
+              <input className="input" name="category" placeholder="Категория" value={productForm.category} onChange={handleProductChange} required />
+              <textarea className="input input--textarea" name="description" placeholder="Описание" value={productForm.description} onChange={handleProductChange} required />
               <div className="form__row">
-                <input className="input" name="price" placeholder="Цена" value={productForm.price} onChange={handleProductChange} />
-                <input className="input" name="stock" placeholder="Остаток" value={productForm.stock} onChange={handleProductChange} />
+                <input className="input" name="price" type="number" min="1" step="1" placeholder="Цена" value={productForm.price} onChange={handleProductChange} required />
+                <input className="input" name="stock" type="number" min="0" step="1" placeholder="Остаток" value={productForm.stock} onChange={handleProductChange} />
               </div>
               <div className="form__row">
-                <input className="input" name="rating" placeholder="Рейтинг" value={productForm.rating} onChange={handleProductChange} />
+                <input className="input" name="rating" type="number" min="0" max="5" step="0.1" placeholder="Рейтинг" value={productForm.rating} onChange={handleProductChange} />
                 <input className="input" name="image" placeholder="Фото, например 1.jpg" value={productForm.image} onChange={handleProductChange} />
               </div>
               <div className="modal__footer">

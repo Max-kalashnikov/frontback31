@@ -230,6 +230,12 @@ function findProduct(id) {
   return products.find((product) => product.id === id);
 }
 
+function parseOptionalNumber(value, fallback = 0) {
+  if (value === undefined || value === "") return fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 const swaggerOptions = {
   definition: {
     openapi: "3.0.0",
@@ -479,15 +485,27 @@ app.post("/api/products", authMiddleware, roleMiddleware(["seller", "admin"]), (
     return res.status(400).json({ error: "title, category, description and price are required" });
   }
 
+  const productPrice = Number(price);
+  const productStock = parseOptionalNumber(stock);
+  const productRating = parseOptionalNumber(rating);
+
+  if (!Number.isFinite(productPrice) || productPrice <= 0) {
+    return res.status(400).json({ error: "Price must be a positive number" });
+  }
+
+  if (productStock === null || productStock < 0 || productRating === null || productRating < 0) {
+    return res.status(400).json({ error: "Stock and rating must be valid positive numbers" });
+  }
+
   const product = {
     id: nanoid(6),
     image: image || "",
     title: String(productTitle).trim(),
     category: String(category).trim(),
     description: String(description).trim(),
-    price: Number(price),
-    stock: stock !== undefined ? Number(stock) : 0,
-    rating: rating !== undefined ? Number(rating) : 0,
+    price: productPrice,
+    stock: productStock,
+    rating: productRating,
   };
 
   products.push(product);
@@ -507,12 +525,33 @@ function updateProductHandler(req, res) {
   const { title, name, category, description, price, stock, rating, image } = req.body;
   const productTitle = title || name;
 
+  if (price !== undefined) {
+    const productPrice = Number(price);
+    if (!Number.isFinite(productPrice) || productPrice <= 0) {
+      return res.status(400).json({ error: "Price must be a positive number" });
+    }
+    product.price = productPrice;
+  }
+
+  if (stock !== undefined) {
+    const productStock = parseOptionalNumber(stock);
+    if (productStock === null || productStock < 0) {
+      return res.status(400).json({ error: "Stock must be a valid positive number" });
+    }
+    product.stock = productStock;
+  }
+
+  if (rating !== undefined) {
+    const productRating = parseOptionalNumber(rating);
+    if (productRating === null || productRating < 0) {
+      return res.status(400).json({ error: "Rating must be a valid positive number" });
+    }
+    product.rating = productRating;
+  }
+
   if (productTitle !== undefined) product.title = String(productTitle).trim();
   if (category !== undefined) product.category = String(category).trim();
   if (description !== undefined) product.description = String(description).trim();
-  if (price !== undefined) product.price = Number(price);
-  if (stock !== undefined) product.stock = Number(stock);
-  if (rating !== undefined) product.rating = Number(rating);
   if (image !== undefined) product.image = String(image).trim();
 
   res.json(product);
