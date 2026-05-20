@@ -613,7 +613,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-const useHttps = process.env.HTTPS === "true" || fs.existsSync(HTTPS_PFX_FILE);
+const useHttps = process.env.HTTPS === "true";
 const server = useHttps && fs.existsSync(HTTPS_PFX_FILE)
   ? https.createServer(
       {
