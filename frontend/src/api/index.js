@@ -102,9 +102,8 @@ export const api = {
     return res.data;
   },
 
-  async blockUser(id) {
-    const res = await apiClient.delete(`/users/${id}`);
-    return res.data;
+  async deleteUser(id) {
+    await apiClient.delete(`/users/${id}`);
   },
 
   async getProducts() {

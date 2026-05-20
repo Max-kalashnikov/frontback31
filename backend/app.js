@@ -438,11 +438,15 @@ app.put("/api/users/:id", authMiddleware, roleMiddleware(["admin"]), (req, res) 
 });
 
 app.delete("/api/users/:id", authMiddleware, roleMiddleware(["admin"]), (req, res) => {
-  const user = users.find((item) => item.id === req.params.id);
-  if (!user) return res.status(404).json({ error: "User not found" });
+  if (req.currentUser.id === req.params.id) {
+    return res.status(400).json({ error: "Current admin cannot be deleted" });
+  }
 
-  user.blocked = true;
-  res.json(publicUser(user));
+  const userIndex = users.findIndex((item) => item.id === req.params.id);
+  if (userIndex === -1) return res.status(404).json({ error: "User not found" });
+
+  users.splice(userIndex, 1);
+  res.status(204).send();
 });
 
 /**

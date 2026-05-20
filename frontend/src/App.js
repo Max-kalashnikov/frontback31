@@ -441,12 +441,24 @@ function App() {
     }
   }
 
-  async function blockUser(id) {
+  async function handleDeleteUser(id) {
+    const user = users.find((item) => item.id === id);
+    if (!user) return;
+
+    if (id === currentUser.id) {
+      setMessage("Нельзя удалить текущего администратора");
+      return;
+    }
+
+    const fullName = `${user.first_name} ${user.last_name}`.trim() || user.email;
+    if (!window.confirm(`Удалить пользователя ${fullName}?`)) return;
+
     try {
-      const updated = await api.blockUser(id);
-      setUsers((prev) => prev.map((item) => (item.id === id ? updated : item)));
+      await api.deleteUser(id);
+      setUsers((prev) => prev.filter((item) => item.id !== id));
+      setMessage("Пользователь удален");
     } catch (err) {
-      setMessage("Не удалось заблокировать пользователя");
+      setMessage("Не удалось удалить пользователя");
     }
   }
 
@@ -696,8 +708,12 @@ function App() {
                           <option value="false">Активен</option>
                           <option value="true">Заблокирован</option>
                         </select>
-                        <button className="btn btn--danger" onClick={() => blockUser(user.id)}>
-                          Блокировать
+                        <button
+                          className="btn btn--danger"
+                          disabled={user.id === currentUser.id}
+                          onClick={() => handleDeleteUser(user.id)}
+                        >
+                          Удалить
                         </button>
                       </div>
                     ))}
