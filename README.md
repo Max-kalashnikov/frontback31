@@ -14,6 +14,29 @@ frontend/src/App.scss
 
 ## Как запустить основной сайт
 
+HTTPS-вариант:
+
+```bash
+cd backend
+npm run cert
+npm run start:https
+```
+
+```bash
+cd frontend
+npm run start:https
+```
+
+Открыть:
+
+```text
+https://localhost:3001
+```
+
+Если браузер покажет предупреждение о локальном сертификате, нужно один раз разрешить переход для `localhost`.
+
+Обычный HTTP-вариант:
+
 Бэкенд:
 
 ```bash

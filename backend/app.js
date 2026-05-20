@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
+const http = require("http");
+const https = require("https");
 const path = require("path");
 const { nanoid } = require("nanoid");
 const bcrypt = require("bcrypt");
@@ -17,12 +19,15 @@ const ACCESS_EXPIRES_IN = "15m";
 const REFRESH_EXPIRES_IN = "7d";
 const DATA_DIR = path.join(__dirname, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
+const CERTS_DIR = path.join(__dirname, "certs");
+const HTTPS_PFX_FILE = path.join(CERTS_DIR, "localhost.pfx");
+const HTTPS_PFX_PASSWORD = process.env.HTTPS_PFX_PASSWORD || "frontback31";
 const roles = ["user", "seller", "admin"];
 
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:3001",
+    origin: ["http://localhost:3001", "https://localhost:3001"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -608,7 +613,23 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-app.listen(port, () => {
-  console.log(`Сервер запущен на http://localhost:${port}`);
-  console.log(`Swagger UI доступен по адресу http://localhost:${port}/api-docs`);
+const useHttps = process.env.HTTPS === "true" || fs.existsSync(HTTPS_PFX_FILE);
+const server = useHttps && fs.existsSync(HTTPS_PFX_FILE)
+  ? https.createServer(
+      {
+        pfx: fs.readFileSync(HTTPS_PFX_FILE),
+        passphrase: HTTPS_PFX_PASSWORD,
+      },
+      app
+    )
+  : http.createServer(app);
+
+const protocol = useHttps && fs.existsSync(HTTPS_PFX_FILE) ? "https" : "http";
+
+server.listen(port, () => {
+  console.log(`Сервер запущен на ${protocol}://localhost:${port}`);
+  console.log(`Swagger UI доступен по адресу ${protocol}://localhost:${port}/api-docs`);
+  if (useHttps && !fs.existsSync(HTTPS_PFX_FILE)) {
+    console.log("HTTPS включен, но сертификат не найден. Запустите npm run cert в backend.");
+  }
 });

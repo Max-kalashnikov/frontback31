@@ -5,6 +5,8 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
+    "start:https": "set HTTPS=true&& node app.js",
+    "cert": "powershell -ExecutionPolicy Bypass -File ./scripts/create-local-cert.ps1",
     "dev": "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -2,9 +2,10 @@ import axios from "axios";
 
 const ACCESS_KEY = "frontback2AccessToken";
 const REFRESH_KEY = "frontback2RefreshToken";
+const API_ORIGIN = process.env.REACT_APP_API_URL || `${window.location.protocol}//localhost:3000/api`;
 
 const apiClient = axios.create({
-  baseURL: "http://localhost:3000/api",
+  baseURL: API_ORIGIN,
   headers: {
     "Content-Type": "application/json",
     accept: "application/json",
@@ -56,7 +57,7 @@ apiClient.interceptors.response.use(
 
     try {
       originalRequest._retry = true;
-      const response = await axios.post("http://localhost:3000/api/auth/refresh", {
+      const response = await axios.post(`${API_ORIGIN}/auth/refresh`, {
         refreshToken,
       });
 
