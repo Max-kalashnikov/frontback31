@@ -6,3 +6,4 @@ frontend/build/
 .run-logs/
 .env
 *.log
+backend/data/users.json

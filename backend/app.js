@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 const { nanoid } = require("nanoid");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -13,6 +15,8 @@ const ACCESS_SECRET = "frontback2_access_secret";
 const REFRESH_SECRET = "frontback2_refresh_secret";
 const ACCESS_EXPIRES_IN = "15m";
 const REFRESH_EXPIRES_IN = "7d";
+const DATA_DIR = path.join(__dirname, "data");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
 const roles = ["user", "seller", "admin"];
 
 app.use(express.json());
@@ -24,7 +28,7 @@ app.use(
   })
 );
 
-let users = [
+const defaultUsers = [
   {
     id: "admin1",
     email: "admin@shop.ru",
@@ -53,6 +57,29 @@ let users = [
     passwordHash: bcrypt.hashSync("user123", 10),
   },
 ];
+
+function loadUsers() {
+  try {
+    if (!fs.existsSync(USERS_FILE)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(USERS_FILE, JSON.stringify(defaultUsers, null, 2));
+      return [...defaultUsers];
+    }
+
+    const savedUsers = JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
+    return Array.isArray(savedUsers) && savedUsers.length > 0 ? savedUsers : [...defaultUsers];
+  } catch (err) {
+    console.error("Failed to load users:", err);
+    return [...defaultUsers];
+  }
+}
+
+function saveUsers() {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+let users = loadUsers();
 
 let refreshTokens = new Set();
 
@@ -304,14 +331,10 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerJsdoc(swaggerOption
  *     tags: [Auth]
  */
 app.post("/api/auth/register", async (req, res) => {
-  const { email, first_name, last_name, password, role = "user" } = req.body;
+  const { email, first_name, last_name, password } = req.body;
 
   if (!email || !first_name || !last_name || !password) {
     return res.status(400).json({ error: "email, first_name, last_name and password are required" });
-  }
-
-  if (!roles.includes(role)) {
-    return res.status(400).json({ error: "Invalid role" });
   }
 
   const normalizedEmail = String(email).trim().toLowerCase();
@@ -326,12 +349,13 @@ app.post("/api/auth/register", async (req, res) => {
     email: normalizedEmail,
     first_name: String(first_name).trim(),
     last_name: String(last_name).trim(),
-    role,
+    role: "user",
     blocked: false,
     passwordHash: await bcrypt.hash(password, 10),
   };
 
   users.push(user);
+  saveUsers();
   res.status(201).json(publicUser(user));
 });
 
@@ -440,6 +464,7 @@ app.put("/api/users/:id", authMiddleware, roleMiddleware(["admin"]), (req, res) 
   if (role !== undefined && roles.includes(role)) user.role = role;
   if (blocked !== undefined) user.blocked = Boolean(blocked);
 
+  saveUsers();
   res.json(publicUser(user));
 });
 
@@ -452,6 +477,7 @@ app.delete("/api/users/:id", authMiddleware, roleMiddleware(["admin"]), (req, re
   if (userIndex === -1) return res.status(404).json({ error: "User not found" });
 
   users.splice(userIndex, 1);
+  saveUsers();
   res.status(204).send();
 });
 

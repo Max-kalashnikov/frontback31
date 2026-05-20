@@ -177,8 +177,14 @@ function App() {
 
     try {
       if (authMode === "register") {
-        await api.register(authForm);
+        await api.register({
+          email: authForm.email,
+          first_name: authForm.first_name,
+          last_name: authForm.last_name,
+          password: authForm.password,
+        });
         setAuthMode("login");
+        setAuthForm(authInitial);
         setMessage("Пользователь создан. Теперь можно войти.");
         return;
       }
@@ -513,11 +519,6 @@ function App() {
                   onChange={handleAuthChange}
                 />
               </div>
-              <select className="input" name="role" value={authForm.role} onChange={handleAuthChange}>
-                <option value="user">Пользователь</option>
-                <option value="seller">Продавец</option>
-                <option value="admin">Администратор</option>
-              </select>
             </>
           )}
 
