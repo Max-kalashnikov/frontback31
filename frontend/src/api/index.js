@@ -2,7 +2,7 @@ import axios from "axios";
 
 const ACCESS_KEY = "frontback2AccessToken";
 const REFRESH_KEY = "frontback2RefreshToken";
-const API_ORIGIN = process.env.REACT_APP_API_URL || "http://localhost:3000/api";
+const API_ORIGIN = process.env.REACT_APP_API_URL || `${window.location.protocol}//localhost:3000/api`;
 
 const apiClient = axios.create({
   baseURL: API_ORIGIN,

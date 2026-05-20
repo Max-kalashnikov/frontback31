@@ -484,6 +484,35 @@ body {
   margin-bottom: 14px;
 }
 
+.reminder-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.reminder-alert {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #f2d18b;
+  background: #fff7e6;
+  border-radius: 8px;
+
+  strong,
+  span {
+    display: block;
+  }
+
+  span {
+    color: $muted;
+    font-size: 13px;
+    margin-top: 3px;
+  }
+}
+
 .note-row {
   grid-template-columns: minmax(260px, 1fr) auto auto auto;
 
@@ -548,6 +577,7 @@ body {
   .form__row,
   .user-row,
   .note-form,
+  .reminder-alert,
   .note-row {
     grid-template-columns: 1fr;
   }

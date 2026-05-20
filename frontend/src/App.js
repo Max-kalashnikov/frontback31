@@ -72,6 +72,7 @@ function App() {
   const [notes, setNotes] = useState([]);
   const [noteForm, setNoteForm] = useState(createNoteFormInitial);
   const [notificationStatus, setNotificationStatus] = useState("");
+  const [reminderAlerts, setReminderAlerts] = useState([]);
   const [snoozeTargetId, setSnoozeTargetId] = useState(null);
   const [snoozeForm, setSnoozeForm] = useState(snoozeFormInitial);
   const [loading, setLoading] = useState(false);
@@ -97,6 +98,8 @@ function App() {
 
     if ("Notification" in window) {
       setNotificationStatus(Notification.permission);
+    } else {
+      setNotificationStatus("unsupported");
     }
     // restoreSession intentionally runs only once on app start.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,15 +118,16 @@ function App() {
       .filter((note) => note.reminder && !note.done)
       .map((note) => {
         const delay = Number(note.reminder) - Date.now();
-        if (delay <= 0) return null;
 
         return window.setTimeout(() => {
           showReminder(note);
-        }, delay);
+        }, Math.max(delay, 0));
       })
       .filter(Boolean);
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
+    // showReminder uses the current notes snapshot from this effect run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notes, currentUser]);
 
   async function restoreSession() {
@@ -219,21 +223,38 @@ function App() {
   }
 
   function showReminder(note) {
+    if (note.notifiedAt && note.notifiedAt >= note.reminder) return;
+
     const text = `Напоминание: ${note.text}`;
 
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("Админка магазина", {
         body: text,
       });
-    } else {
-      setMessage(text);
     }
+
+    setReminderAlerts((prev) => [
+      {
+        id: `${note.id}-${Date.now()}`,
+        noteId: note.id,
+        text: note.text,
+        createdAt: Date.now(),
+      },
+      ...prev,
+    ].slice(0, 5));
+    saveNotes(notes.map((item) => (item.id === note.id ? { ...item, notifiedAt: Date.now() } : item)));
+    setMessage(text);
   }
 
   async function requestNotifications() {
     if (!("Notification" in window)) {
       setNotificationStatus("unsupported");
       setMessage("Браузер не поддерживает уведомления");
+      return;
+    }
+
+    if (!window.isSecureContext) {
+      setMessage("Уведомления работают только на localhost или HTTPS");
       return;
     }
 
@@ -332,15 +353,23 @@ function App() {
 
     saveNotes(
       notes.map((note) =>
-        note.id === snoozeTargetId ? { ...note, reminder: Date.now() + amount * unitMs, done: false } : note
+        note.id === snoozeTargetId
+          ? { ...note, reminder: Date.now() + amount * unitMs, notifiedAt: null, done: false }
+          : note
       )
     );
+    setReminderAlerts((prev) => prev.filter((alert) => alert.noteId !== snoozeTargetId));
     setMessage(`Напоминание отложено на ${amount} ${snoozeUnitLabels[snoozeForm.unit] || "минут"}`);
     closeSnoozeModal();
   }
 
   function deleteNote(id) {
     saveNotes(notes.filter((note) => note.id !== id));
+    setReminderAlerts((prev) => prev.filter((alert) => alert.noteId !== id));
+  }
+
+  function closeReminderAlert(id) {
+    setReminderAlerts((prev) => prev.filter((alert) => alert.id !== id));
   }
 
   function openCreateProduct() {
@@ -781,6 +810,25 @@ function App() {
                       Добавить
                     </button>
                   </form>
+
+                  {reminderAlerts.length > 0 && (
+                    <div className="reminder-alerts">
+                      {reminderAlerts.map((alert) => (
+                        <div className="reminder-alert" key={alert.id}>
+                          <div>
+                            <strong>Сработало напоминание</strong>
+                            <span>{alert.text}</span>
+                          </div>
+                          <button className="btn" type="button" onClick={() => openSnoozeNote(alert.noteId)}>
+                            Отложить
+                          </button>
+                          <button className="btn" type="button" onClick={() => closeReminderAlert(alert.id)}>
+                            Закрыть
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="notes-list">
                     {notes.length === 0 ? (

@@ -6,5 +6,5 @@ frontend/build/
 .run-logs/
 .env
 *.log
-backend/data/users.json
+backend/data/*.json
 backend/certs/

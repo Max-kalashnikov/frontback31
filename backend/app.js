@@ -19,6 +19,7 @@ const ACCESS_EXPIRES_IN = "15m";
 const REFRESH_EXPIRES_IN = "7d";
 const DATA_DIR = path.join(__dirname, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
+const PRODUCTS_FILE = path.join(DATA_DIR, "products.json");
 const CERTS_DIR = path.join(__dirname, "certs");
 const HTTPS_PFX_FILE = path.join(CERTS_DIR, "localhost.pfx");
 const HTTPS_PFX_PASSWORD = process.env.HTTPS_PFX_PASSWORD || "frontback31";
@@ -88,7 +89,7 @@ let users = loadUsers();
 
 let refreshTokens = new Set();
 
-let products = [
+const defaultProducts = [
   {
     id: nanoid(6),
     image: "1.jpg",
@@ -190,6 +191,29 @@ let products = [
     rating: 4.7,
   },
 ];
+
+function loadProductsData() {
+  try {
+    if (!fs.existsSync(PRODUCTS_FILE)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(defaultProducts, null, 2));
+      return [...defaultProducts];
+    }
+
+    const savedProducts = JSON.parse(fs.readFileSync(PRODUCTS_FILE, "utf8"));
+    return Array.isArray(savedProducts) && savedProducts.length > 0 ? savedProducts : [...defaultProducts];
+  } catch (err) {
+    console.error("Failed to load products:", err);
+    return [...defaultProducts];
+  }
+}
+
+function saveProducts() {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(products, null, 2));
+}
+
+let products = loadProductsData();
 
 function publicUser(user) {
   return {
@@ -540,6 +564,7 @@ app.post("/api/products", authMiddleware, roleMiddleware(["seller", "admin"]), (
   };
 
   products.push(product);
+  saveProducts();
   res.status(201).json(product);
 });
 
@@ -585,6 +610,7 @@ function updateProductHandler(req, res) {
   if (description !== undefined) product.description = String(description).trim();
   if (image !== undefined) product.image = String(image).trim();
 
+  saveProducts();
   res.json(product);
 }
 
@@ -597,6 +623,7 @@ app.delete("/api/products/:id", authMiddleware, roleMiddleware(["admin"]), (req,
   if (!exists) return res.status(404).json({ error: "Product not found" });
 
   products = products.filter((product) => product.id !== req.params.id);
+  saveProducts();
   res.status(204).send();
 });
 
